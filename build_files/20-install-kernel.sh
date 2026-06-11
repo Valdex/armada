@@ -3,7 +3,7 @@ set -euxo pipefail
 
 KVER="7.0.11"
 TARBALL="/ctx/vendor/kernel/armada-kernel-${KVER}.tar.zst"
-EXPECTED_SHA256="5cf79efef0dd5b179fa44f3c79669e67314b3a945bd48f127623ace55c48daf2"
+EXPECTED_SHA256="bcd475ff100c83fde87ef9defbcd8e410ff48e22e95cfb6510d6a23882e3a78f"
 
 # bootc expects exactly one kernel under /usr/lib/modules.
 dnf5 -y remove kernel kernel-core kernel-modules kernel-modules-core 2>/dev/null || true
