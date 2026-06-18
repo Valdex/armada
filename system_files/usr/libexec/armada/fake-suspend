@@ -126,19 +126,16 @@ do_suspend() {
     block_input
     display_off
     freeze_processes
-    /usr/libexec/armada/power-control suspend
-    pkill -STOP -f '/usr/libexec/armada/game-watch' 2>/dev/null || true
+    timeout 10 /usr/bin/armada-power suspend || log "armada-power suspend timed out"
 }
 do_resume() {
     log "leaving fake suspend"
-    # Release clocks/freeze/input before the display (the step most likely to wedge)
-    # and clear the flag last, so a hung display_on can't strand the device.
-    pkill -CONT -f '/usr/libexec/armada/game-watch' 2>/dev/null || true
-    /usr/libexec/armada/power-control resume
+    # Clear the flag last, so a hung display_on can't strand the device.
     unfreeze_processes
     unblock_input
     unmute_audio
     display_on
+    timeout 10 /usr/bin/armada-power resume || log "armada-power resume timed out"
     restore_brightness
     rm -f "$STATE_FLAG"
     rm -rf "$SAVE_DIR"

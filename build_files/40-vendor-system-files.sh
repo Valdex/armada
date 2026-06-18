@@ -2,9 +2,10 @@
 set -euxo pipefail
 
 cp -a /ctx/system_files/. /
+install -Dpm 0644 /etc/armada/power-profiles.conf /usr/share/armada/power-profiles.conf
 install -Dpm 0755 /packages/extest/libextest.so /usr/lib/extest/libextest.so
 
-# shipped so armada-bootimg-update can rebuild /KERNEL on-device after an OTA
+# mkbootimg must be present for on-device /KERNEL rebuilds after OTA.
 bash /ctx/build_files/fetch-mkbootimg.sh /usr/libexec/armada
 chmod 0755 /usr/libexec/armada/mkbootimg.py /usr/libexec/armada/gki/generate_gki_certificate.py
 
@@ -20,11 +21,13 @@ systemctl disable getty@tty1.service || true
 systemctl enable sddm.service
 systemctl enable seatd.service
 systemctl enable inputplumber.service
+systemctl enable armada-upgrade-migrations.service
 systemctl enable armada-device-quirks.service
-systemctl enable armada-perf-paths.service
 systemctl enable armada-steamapps.service
-systemctl enable armada-game-watch.service
+systemctl enable armada-powerd.service
 systemctl enable armada-power-switch.service
+systemctl enable armada-steamos-manager.service
+systemctl --global enable armada-steamos-manager.service
 systemctl enable armada-bootimg-sync.service
 systemctl enable armada-flatpak-setup.service
 

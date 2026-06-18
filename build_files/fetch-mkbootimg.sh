@@ -10,7 +10,7 @@ dest="${1:?usage: fetch-mkbootimg.sh <destdir>}"
 base="https://android.googlesource.com/platform/system/tools/mkbootimg/+/${COMMIT}"
 
 mkdir -p "${dest}/gki"
-curl -fsSL "${base}/mkbootimg.py?format=TEXT" | base64 -d > "${dest}/mkbootimg.py"
-curl -fsSL "${base}/gki/generate_gki_certificate.py?format=TEXT" | base64 -d > "${dest}/gki/generate_gki_certificate.py"
+curl --retry 3 --retry-delay 2 -fsSL "${base}/mkbootimg.py?format=TEXT" | base64 -d > "${dest}/mkbootimg.py"
+curl --retry 3 --retry-delay 2 -fsSL "${base}/gki/generate_gki_certificate.py?format=TEXT" | base64 -d > "${dest}/gki/generate_gki_certificate.py"
 echo "${SHA_MKBOOTIMG}  ${dest}/mkbootimg.py" | sha256sum -c -
 echo "${SHA_GKICERT}  ${dest}/gki/generate_gki_certificate.py" | sha256sum -c -

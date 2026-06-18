@@ -7,14 +7,18 @@ eval "$(/usr/libexec/armada/device-env)"
 [[ -n "${ARMADA_PANEL_NATIVE_HEIGHT:-}" ]] && SCREEN_HEIGHT="$ARMADA_PANEL_NATIVE_HEIGHT"
 if [[ -n "${ARMADA_PANEL_REFRESH_RATES:-}" ]]; then
     CUSTOM_REFRESH_RATES="$ARMADA_PANEL_REFRESH_RATES"
-    STEAM_DISPLAY_REFRESH_LIMITS="$ARMADA_PANEL_REFRESH_RATES"
+    IFS=',' read -r -a ARMADA_REFRESH_RATE_LIST <<< "$ARMADA_PANEL_REFRESH_RATES"
+    if (( ${#ARMADA_REFRESH_RATE_LIST[@]} > 1 )); then
+        STEAM_DISPLAY_REFRESH_LIMITS="${ARMADA_REFRESH_RATE_LIST[0]},${ARMADA_REFRESH_RATE_LIST[-1]}"
+    else
+        unset STEAM_DISPLAY_REFRESH_LIMITS
+    fi
 fi
 USE_ROTATION_SHADER="${ARMADA_GAMESCOPE_USE_ROTATION_SHADER:-0}"
 if [[ -n "${ARMADA_GAMESCOPE_FAKE_OUTPUT_MM:-}" ]]; then
     export GAMESCOPE_FAKE_OUTPUT_MM="$ARMADA_GAMESCOPE_FAKE_OUTPUT_MM"
 fi
 
-# Expose preinstalled CachyOS Proton 11
 export STEAM_EXTRA_COMPAT_TOOLS_PATHS=/usr/share/steam/compatibilitytools.d
 
 CLIENTCMD='/usr/libexec/armada/launch-steam -gamepadui -steamos3 -steampal -steamdeck -noverifyfiles'

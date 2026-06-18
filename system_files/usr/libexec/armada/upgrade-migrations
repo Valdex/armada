@@ -1,0 +1,20 @@
+#!/bin/bash
+set -euo pipefail
+
+if [[ ! -e /etc/armada/power-profiles.conf && -e /usr/share/armada/power-profiles.conf ]]; then
+    install -Dpm 0644 /usr/share/armada/power-profiles.conf /etc/armada/power-profiles.conf
+fi
+
+for unit in armada-game-watch.service armada-perf-paths.service armada-power@game.service armada-power@balanced.service; do
+    systemctl disable --now "$unit" >/dev/null 2>&1 || true
+done
+
+systemctl disable --now plugin_loader.service >/dev/null 2>&1 || true
+rm -f /etc/systemd/user/gamescope-session-plus@.service.d/10-armada-affinity.conf
+
+for unit in armada-upgrade-migrations.service armada-powerd.service armada-steamos-manager.service; do
+    systemctl enable "$unit" >/dev/null 2>&1 || true
+done
+systemctl --global enable armada-steamos-manager.service >/dev/null 2>&1 || true
+systemctl daemon-reload >/dev/null 2>&1 || true
+systemctl start --no-block armada-powerd.service armada-steamos-manager.service >/dev/null 2>&1 || true

@@ -94,8 +94,8 @@ PROTON_TAR="${PROTON_NAME}.tar.xz"
 PROTON_URL="https://github.com/CachyOS/proton-cachyos/releases/download/cachyos-${PROTON_VER}/${PROTON_TAR}"
 PROTON_SHA512_URL="https://github.com/CachyOS/proton-cachyos/releases/download/cachyos-${PROTON_VER}/${PROTON_NAME}.sha512sum"
 
-curl -fsSL -o "/tmp/${PROTON_TAR}" "${PROTON_URL}"
-curl -fsSL -o "/tmp/${PROTON_NAME}.sha512sum" "${PROTON_SHA512_URL}"
+curl --retry 3 --retry-delay 2 -fsSL -o "/tmp/${PROTON_TAR}" "${PROTON_URL}"
+curl --retry 3 --retry-delay 2 -fsSL -o "/tmp/${PROTON_NAME}.sha512sum" "${PROTON_SHA512_URL}"
 cd /tmp
 sha512sum -c "${PROTON_NAME}.sha512sum"
 
@@ -106,6 +106,13 @@ mkdir -p "${PROTON_DIR}"
 tar -xJf "/tmp/${PROTON_TAR}" -C "${PROTON_DIR}/"
 # Missing runtime app makes Steam fall back to Proton 10.
 sed -i '/require_tool_appid/d' "${PROTON_DIR}/${PROTON_NAME}/toolmanifest.vdf"
+cat > "${PROTON_DIR}/${PROTON_NAME}/armada-proton" <<'EOF'
+#!/bin/sh
+exec /usr/libexec/armada/armada-proton-wrapper "$(dirname "$0")/proton" "$@"
+EOF
+chmod +x "${PROTON_DIR}/${PROTON_NAME}/armada-proton"
+sed -i 's#"commandline"[[:space:]]*"/proton #"commandline" "/armada-proton #' \
+    "${PROTON_DIR}/${PROTON_NAME}/toolmanifest.vdf"
 python3 /ctx/build_files/set-steam-default-compat.py "${STEAM_HOME}" "${PROTON_NAME}" "${PROTON_DIR}"
 rm -f "/tmp/${PROTON_TAR}" "/tmp/${PROTON_NAME}.sha512sum"
 
