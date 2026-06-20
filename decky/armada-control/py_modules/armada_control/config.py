@@ -1,3 +1,4 @@
+from .controller import CONTROLLER_TYPES, controller_type
 from .power import factory_power_defaults, parse_power
 from .steam import installed_games
 from .system import cpu_device_class, ssh_enabled
@@ -14,4 +15,6 @@ def build_config():
         "fexProfiles": fex_profile_labels(fex_contract),
         "cpuDeviceClass": cpu_device_class(),
         "sshEnabled": ssh_enabled(),
+        "controllerType": controller_type(),
+        "controllerTypes": [{"data": key, "label": label} for key, label in CONTROLLER_TYPES.items()],
     }

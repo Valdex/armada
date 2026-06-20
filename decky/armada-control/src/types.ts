@@ -78,6 +78,8 @@ export interface Config {
   fexProfiles: Record<string, FexProfile>;
   cpuDeviceClass: string;
   sshEnabled: boolean;
+  controllerType: string;
+  controllerTypes: DropdownChoice[];
   calibration?: CalibrationState;
   game?: GameRef | null;
   selectedGame?: GameRef | null;

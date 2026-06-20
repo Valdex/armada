@@ -1,4 +1,4 @@
-import { Dropdown, DropdownItem, PanelSection, PanelSectionRow, SliderField, ToggleField } from "@decky/ui";
+import { Dropdown, DropdownItemInternal, PanelSection, PanelSectionRow, SliderField, ToggleField } from "@decky/ui";
 import type { ReactNode } from "react";
 import type { DropdownChoice } from "../types";
 
@@ -16,7 +16,7 @@ export function SelectEdit({ label, value, options, onChange }: {
       {label === undefined ? (
         <Dropdown selectedOption={value} rgOptions={rgOptions} onChange={(option) => onChange(option.data)} />
       ) : (
-        <DropdownItem label={label} selectedOption={value} rgOptions={rgOptions} onChange={(option) => onChange(option.data)} />
+        <DropdownItemInternal childrenContainerWidth="max" label={label} selectedOption={value} rgOptions={rgOptions} onChange={(option) => onChange(option.data)} />
       )}
     </PanelSectionRow>
   );
@@ -30,9 +30,9 @@ export function ToggleRow({ label, value, onChange, disabled, description }: {
   description?: ReactNode;
 }) {
   return (
-    <PanelSection>
+    <PanelSectionRow>
       <ToggleField label={label} description={description} checked={!!value} disabled={disabled} onChange={onChange} />
-    </PanelSection>
+    </PanelSectionRow>
   );
 }
 

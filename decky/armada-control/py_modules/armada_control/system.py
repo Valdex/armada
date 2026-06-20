@@ -55,11 +55,9 @@ def device_env():
 
 
 def ssh_enabled():
-    enabled = run_cmd(["systemctl", "is-enabled", "sshd"])
     active = run_cmd(["systemctl", "is-active", "sshd"])
-    enabled_s = enabled.stdout.strip() if enabled else ""
     active_s = active.stdout.strip() if active else ""
-    return enabled_s == "enabled" or active_s == "active"
+    return active_s == "active"
 
 
 def read_text(path):

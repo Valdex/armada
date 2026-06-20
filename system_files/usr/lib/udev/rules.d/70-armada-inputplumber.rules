@@ -1,2 +1,2 @@
 # Steam needs group access to the deck-uhid hidraw node.
-KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="12f0", GROUP="input", MODE="0660"
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", KERNELS=="0003:28DE:12F0.*", GROUP="input", MODE="0660"
