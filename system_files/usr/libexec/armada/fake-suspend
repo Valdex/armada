@@ -51,6 +51,75 @@ display_on() {
 mute_audio()   { as_session wpctl set-mute @DEFAULT_AUDIO_SINK@ 1 2>/dev/null || true; }
 unmute_audio() { as_session wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 2>/dev/null || true; }
 
+radio_soft_blocked() {
+    rfkill list "$1" 2>/dev/null | grep -q 'Soft blocked: yes'
+}
+
+suspend_radios() {
+    command -v rfkill >/dev/null 2>&1 || return 0
+
+    : > "$SAVE_DIR/radios-unblock-on-resume"
+    local kind
+    for kind in wifi bluetooth; do
+        rfkill list "$kind" >/dev/null 2>&1 || continue
+        radio_soft_blocked "$kind" && continue
+        if rfkill block "$kind"; then
+            printf '%s\n' "$kind" >> "$SAVE_DIR/radios-unblock-on-resume"
+        else
+            log "failed to block ${kind}"
+        fi
+    done
+}
+
+resume_radios() {
+    [[ -r "$SAVE_DIR/radios-unblock-on-resume" ]] || return 0
+
+    local kind
+    while IFS= read -r kind; do
+        [[ -n "$kind" ]] || continue
+        rfkill unblock "$kind" || log "failed to restore ${kind}"
+    done < "$SAVE_DIR/radios-unblock-on-resume"
+}
+
+runtime_pm_devices() {
+    local dev
+    # Leave GPU runtime PM alone here; the GMU is known to wedge under
+    # rapid idle/resume churn on current devices.
+    for dev in /sys/devices/platform/soc@0/*.usb; do
+        [[ -e "$dev" ]] && printf '%s\n' "$dev"
+    done
+}
+
+suspend_runtime_pm() {
+    : > "$SAVE_DIR/runtime-pm"
+
+    local dev control previous count=0
+    while IFS= read -r dev; do
+        control="${dev}/power/control"
+        [[ -w "$control" ]] || continue
+        previous="$(cat "$control" 2>/dev/null)" || continue
+        printf '%s\t%s\n' "$control" "$previous" >> "$SAVE_DIR/runtime-pm"
+        if echo auto > "$control" 2>/dev/null; then
+            count=$((count + 1))
+        else
+            log "failed to enable runtime PM for ${dev}"
+        fi
+    done < <(runtime_pm_devices)
+
+    log "enabled runtime PM for ${count} devices"
+}
+
+resume_runtime_pm() {
+    [[ -r "$SAVE_DIR/runtime-pm" ]] || return 0
+
+    local control previous
+    while IFS=$'\t' read -r control previous; do
+        [[ -w "$control" ]] || continue
+        echo "$previous" > "$control" 2>/dev/null ||
+            log "failed to restore ${control}=${previous}"
+    done < <(tac "$SAVE_DIR/runtime-pm")
+}
+
 # The power key is left ungrabbed by block_input; wait_for_wake grabs it instead.
 INPUT_WHITELIST='pmic_pwrkey'
 
@@ -128,6 +197,13 @@ session_procs_file() {
 
 freeze_processes() {
     local procs p c
+
+    if systemctl freeze user.slice; then
+        touch "$SAVE_DIR/user-slice-frozen"
+        log "froze user.slice"
+        return
+    fi
+
     procs="$(session_procs_file)" || { log "no session cgroup; skipping freeze"; return; }
     [[ -r "$procs" ]] || { log "session procs unreadable; skipping freeze"; return; }
     : > "$SAVE_DIR/frozen"
@@ -140,6 +216,12 @@ freeze_processes() {
     log "froze $(wc -l < "$SAVE_DIR/frozen" 2>/dev/null || echo 0) processes"
 }
 unfreeze_processes() {
+    if [[ -f "$SAVE_DIR/user-slice-frozen" ]]; then
+        systemctl thaw user.slice || log "failed to thaw user.slice"
+        rm -f "$SAVE_DIR/user-slice-frozen"
+        return
+    fi
+
     if [[ -f "$SAVE_DIR/frozen" ]]; then
         local p; for p in $(cat "$SAVE_DIR/frozen"); do kill -CONT "$p" 2>/dev/null || true; done
     fi
@@ -154,17 +236,22 @@ do_suspend() {
     block_input
     display_off   # gamescope drm_sleep (game) / bl_power (desktop); after Steam's animation
     freeze_processes
+    suspend_radios
     timeout 10 /usr/bin/armada-power suspend || log "armada-power suspend timed out"
+    # Do this after the final GPU devfreq writes in armada-power suspend.
+    suspend_runtime_pm
 }
 do_resume() {
     # Idempotent: a trap-fired resume after the explicit one is a no-op.
     [[ -f "$STATE_FLAG" ]] || return 0
     log "leaving fake suspend"
+    resume_runtime_pm
+    timeout 10 /usr/bin/armada-power resume || log "armada-power resume timed out"
+    resume_radios
     unfreeze_processes
     unblock_input
     unmute_audio
     display_on
-    timeout 10 /usr/bin/armada-power resume || log "armada-power resume timed out"
     rm -f "$STATE_FLAG"
     rm -rf "$SAVE_DIR"
 }

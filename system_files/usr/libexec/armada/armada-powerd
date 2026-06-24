@@ -176,12 +176,15 @@ class ArmadaPower:
         self.underclock_config = {}
         self.fan_curves = {}
         self.fan_config = {}
+        self.suspend_config = {}
         self.default_profile = ""
         self.profile = ""
         self.gpu_level = "auto"
         self.manual_gpu_clock = 0
         self.smoothed_temp = 0.0
         self.last_pwm = 0
+        self.suspended = False
+        self.suspend_fan_running = False
         self.suspend_save = {}
         self.connection = None
         self.load_config()
@@ -310,7 +313,36 @@ class ArmadaPower:
         fan_config["smoothing"] = clamp(parser.getfloat("fan", "smoothing"), 0.0, 0.99)
         fan_config["min_pwm"] = clamp(fan_config["min_pwm"], 0, 255)
         fan_config["max_pwm"] = clamp(fan_config["max_pwm"], fan_config["min_pwm"], 255)
-        return default_profile, underclock_config, fan_curves, profile_config, fan_config
+
+        fan_off_below = clamp(parser.getint("suspend", "fan_off_below", fallback=45), 0, 120)
+        fan_on_above = clamp(
+            parser.getint("suspend", "fan_on_above", fallback=50),
+            fan_off_below,
+            120,
+        )
+        fan_safe_above = clamp(
+            parser.getint("suspend", "fan_safe_above", fallback=55),
+            fan_on_above,
+            120,
+        )
+        fan_low_pwm = clamp(
+            parser.getint("suspend", "fan_low_pwm", fallback=fan_config["min_pwm"]),
+            0,
+            fan_config["max_pwm"],
+        )
+        fan_safe_pwm = clamp(
+            parser.getint("suspend", "fan_safe_pwm", fallback=FAN_SAFE_PWM),
+            fan_low_pwm,
+            fan_config["max_pwm"],
+        )
+        suspend_config = {
+            "fan_off_below": fan_off_below,
+            "fan_on_above": fan_on_above,
+            "fan_safe_above": fan_safe_above,
+            "fan_low_pwm": fan_low_pwm,
+            "fan_safe_pwm": fan_safe_pwm,
+        }
+        return default_profile, underclock_config, fan_curves, profile_config, fan_config, suspend_config
 
     def load_config(self):
         try:
@@ -318,7 +350,14 @@ class ArmadaPower:
         except Exception as exc:
             restore_factory_config(exc)
             parsed = self.parse_config(include_user=False)
-        self.default_profile, self.underclock_config, self.fan_curves, self.profile_config, self.fan_config = parsed
+        (
+            self.default_profile,
+            self.underclock_config,
+            self.fan_curves,
+            self.profile_config,
+            self.fan_config,
+            self.suspend_config,
+        ) = parsed
         self.profile_labels = {p: self.profile_config[p].get("label", p) for p in PROFILES}
 
     def discover_gpu(self):
@@ -346,7 +385,7 @@ class ArmadaPower:
             temp = zone / "temp"
             if not temp.exists():
                 continue
-            if kind.startswith(("cpuss", "gpu", "gpuss", "video", "mem")):
+            if kind.startswith(("cpu", "gpu", "gpuss", "video", "mem")):
                 control.append(temp)
         return control
 
@@ -459,6 +498,8 @@ class ArmadaPower:
     def suspend(self):
         if self.suspend_save:
             return
+        self.suspended = True
+        self.suspend_fan_running = False
         self.suspend_save = {"cpu": [], "gpu": {}}
         for policy in self.cpu_policies:
             freqs = self.cpu_available_freqs(policy)
@@ -481,12 +522,17 @@ class ArmadaPower:
             }
             write_text(self.gpu / "min_freq", freqs[0])
             write_text(self.gpu / "max_freq", freqs[0])
+        self.fan_tick()
 
     def resume(self):
+        self.suspended = False
+        self.suspend_fan_running = False
+        self.smoothed_temp = 0.0
         if not self.suspend_save:
             self.apply_profile()
             if self.gpu_level == "manual" and self.manual_gpu_clock:
                 self.set_gpu_manual_clock(self.manual_gpu_clock)
+            self.fan_tick()
             return
         for policy, min_freq, max_freq in self.suspend_save.get("cpu", []):
             freqs = self.cpu_available_freqs(policy)
@@ -511,6 +557,7 @@ class ArmadaPower:
         self.apply_profile()
         if self.gpu_level == "manual" and self.manual_gpu_clock:
             self.set_gpu_manual_clock(self.manual_gpu_clock)
+        self.fan_tick()
 
     def apply_gpu_auto(self, settings=None):
         freqs = self.gpu_freqs()
@@ -537,15 +584,40 @@ class ArmadaPower:
         self.manual_gpu_clock = hz // 1000000
         return self.manual_gpu_clock
 
-    def read_temp(self):
+    def read_temps(self):
         values = []
         for path in self.temp_paths:
             value = read_text(path)
             if value.isdigit():
-                values.append(int(value))
+                values.append(int(value) // 1000)
+        return values
+
+    def read_temp(self):
+        values = self.read_temps()
         if not values:
             return 0
-        return sum(values) // len(values) // 1000
+        return sum(values) // len(values)
+
+    def read_temp_max(self):
+        values = self.read_temps()
+        return max(values) if values else 0
+
+    def suspend_target_pwm(self, temp):
+        config = self.suspend_config
+        if not temp:
+            return config["fan_safe_pwm"]
+        if temp >= config["fan_safe_above"]:
+            self.suspend_fan_running = True
+            return config["fan_safe_pwm"]
+        if self.suspend_fan_running:
+            if temp <= config["fan_off_below"]:
+                self.suspend_fan_running = False
+                return 0
+            return config["fan_low_pwm"]
+        if temp >= config["fan_on_above"]:
+            self.suspend_fan_running = True
+            return config["fan_low_pwm"]
+        return 0
 
     def target_pwm(self, temp):
         curve = self.profile_settings()["fan_curve"]
@@ -563,18 +635,26 @@ class ArmadaPower:
                 return True
             if self.fan_enable and self.fan_enable.exists():
                 write_text(self.fan_enable, "1")
-            temp = self.read_temp()
-            if temp:
-                weight = self.fan_config["smoothing"]
-                self.smoothed_temp = temp if not self.smoothed_temp else (self.smoothed_temp * weight + temp * (1.0 - weight))
-                target = self.target_pwm(int(self.smoothed_temp))
+
+            if self.suspended:
+                temp = self.read_temp_max()
+                target = self.suspend_target_pwm(temp)
+                self.smoothed_temp = float(temp)
+                self.last_pwm = clamp(target, 0, self.fan_config["max_pwm"])
             else:
-                target = FAN_SAFE_PWM
-            if target > self.last_pwm:
-                next_pwm = min(target, self.last_pwm + self.fan_config["ramp_up"])
-            else:
-                next_pwm = max(target, self.last_pwm - self.fan_config["ramp_down"])
-            self.last_pwm = clamp(next_pwm, self.fan_config["min_pwm"], self.fan_config["max_pwm"])
+                temp = self.read_temp()
+                if temp:
+                    weight = self.fan_config["smoothing"]
+                    self.smoothed_temp = temp if not self.smoothed_temp else (self.smoothed_temp * weight + temp * (1.0 - weight))
+                    target = self.target_pwm(int(self.smoothed_temp))
+                else:
+                    target = FAN_SAFE_PWM
+                if target > self.last_pwm:
+                    next_pwm = min(target, self.last_pwm + self.fan_config["ramp_up"])
+                else:
+                    next_pwm = max(target, self.last_pwm - self.fan_config["ramp_down"])
+                self.last_pwm = clamp(next_pwm, self.fan_config["min_pwm"], self.fan_config["max_pwm"])
+
             write_text(self.fan_pwm, self.last_pwm)
             if self.connection:
                 self.emit_properties(
@@ -692,6 +772,7 @@ class ArmadaPower:
             "fan_pwm": self.get_property("FanPwm"),
             "fan_rpm": self.get_property("FanRpm"),
             "temperature": self.get_property("Temperature"),
+            "suspended": GLib.Variant("b", self.suspended),
         }
 
     def emit_properties(self, changed):

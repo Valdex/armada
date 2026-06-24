@@ -79,6 +79,7 @@ def status():
         "fan_pwm",
         "fan_rpm",
         "temperature",
+        "suspended",
     ):
         value = data[key].unpack() if hasattr(data[key], "unpack") else data[key]
         print(f"{key}={value}")
