@@ -54,6 +54,8 @@ sed -i \
 dnf5 -y install --setopt=install_weak_deps=False \
     erofs-fuse \
     erofs-utils \
+    fuse-libs \
+    lsb_release \
     squashfuse \
     squashfs-tools
 
