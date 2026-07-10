@@ -63,16 +63,16 @@ dnf5 -y install --setopt=install_weak_deps=False /packages/fex/fex-emu-*.rpm
 
 # Use Arch rootfs for better compatibility with Linux games targeting SteamOS
 mkdir -p /usr/share/fex-emu/RootFS
-ARCH_ROOTFS_URL="https://rootfs.fex-emu.gg/ArchLinux/2026-01-08/ArchLinux.ero"
-ARCH_ROOTFS_SHA256="231febb39c636feb89426a21aca3b2ceb121645dbaac7858431d1b7bc7dfde95"
-curl --retry 3 --retry-delay 2 -fsSL -o /usr/share/fex-emu/RootFS/ArchLinux.ero "${ARCH_ROOTFS_URL}"
-echo "${ARCH_ROOTFS_SHA256}  /usr/share/fex-emu/RootFS/ArchLinux.ero" | sha256sum -c -
+ARCH_ROOTFS_URL="https://rootfs.fex-emu.gg/ArchLinux/2026-01-08/ArchLinux.sqsh"
+ARCH_ROOTFS_SHA256="cb059973b7953ad9165845529655189b96f9a174b14a6a149c87ec884b0c5e90"
+curl --retry 3 --retry-delay 2 -fsSL -o /usr/share/fex-emu/RootFS/ArchLinux.sqsh "${ARCH_ROOTFS_URL}"
+echo "${ARCH_ROOTFS_SHA256}  /usr/share/fex-emu/RootFS/ArchLinux.sqsh" | sha256sum -c -
 
 # /usr/share config stays user-overridable; ~/.fex-emu would mask it.
 cat > /usr/share/fex-emu/Config.json <<'EOF'
 {
   "Config": {
-    "RootFS": "ArchLinux.ero",
+    "RootFS": "ArchLinux.sqsh",
     "TSOEnabled": "1",
     "X87ReducedPrecision": "1",
     "Multiblock": "0",
