@@ -32,7 +32,9 @@ COPY system_files /system_files/
 
 FROM quay.io/fedora/fedora-bootc:44
 ARG ARMADA_VERSION=unknown
+ARG ARMADA_DEVICE_TARGET=universal
 LABEL org.opencontainers.image.version="${ARMADA_VERSION}"
+LABEL org.armada.device-target="${ARMADA_DEVICE_TARGET}"
 
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=bind,from=fex,source=/rpms,target=/packages/fex \
@@ -50,6 +52,7 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     mkdir -p /usr/lib/armada && \
     printf '%s\n' "${ARMADA_VERSION}" >/usr/lib/armada/version && \
+    printf '%s\n' "${ARMADA_DEVICE_TARGET}" >/usr/lib/armada/build-target && \
     /ctx/build_files/build.sh
 
 RUN bootc container lint

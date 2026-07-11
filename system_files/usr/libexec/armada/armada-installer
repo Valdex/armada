@@ -2,6 +2,11 @@
 set -euo pipefail
 source /usr/lib/armada/bootimg-args
 source /usr/lib/armada/storage-lib
+source /usr/lib/armada/build-target-lib
+
+# The current internal layout seeds Android-format /KERNEL and is not valid for
+# the V2 EFI/GRUB image. Refuse before probing or modifying UFS.
+armada_require_mutations_allowed "internal installation" || exit 1
 
 ARMADA_REGISTRY="ghcr.io/virtudude/armada"
 DEVICE="${ARMADA_INTERNAL_DEVICE:-$(armada_internal_device || true)}"

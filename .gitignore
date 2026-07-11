@@ -1,6 +1,9 @@
 Justfile.local
+.DS_Store
 output/
 _build*
 cosign.key
 __pycache__/
 *.pyc
+kernel-rpmini-v2/.ccache/
+kernel-rpmini-v2/out/

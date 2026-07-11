@@ -54,6 +54,12 @@ dnf5 -y install --setopt=install_weak_deps=False \
     zenity \
     seatd
 
+# The user's proven headless-rescue path is an RTL8153 USB Ethernet adapter in
+# the Type-C hub. Fedora splits its runtime blob into this package.
+if [[ "$(</usr/lib/armada/build-target)" == retroid-pocket-mini-v2 ]]; then
+    dnf5 -y install --setopt=install_weak_deps=False realtek-firmware
+fi
+
 # CachyOS Proton's ARM64 GStreamer asks for Arch's libbz2 soname.
 ln -sf libbz2.so.1 /usr/lib64/libbz2.so.1.0
 

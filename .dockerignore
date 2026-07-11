@@ -1,2 +1,4 @@
 **/node_modules
 decky/armada-control/dist
+kernel-rpmini-v2/.ccache
+kernel-rpmini-v2/out

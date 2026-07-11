@@ -1,0 +1,4 @@
+# Provenance: ROCKNIX 20260701 commit 3e4ee5852e6ca5ea73a38369d2639fad2262648b,
+# projects/ROCKNIX/devices/SM8250/filesystem/usr/lib/udev/rules.d/99-wcd938x-nosleep.rules
+# Disable runtime PM for WCD938x SoundWire RX/TX to fix jack detection
+ACTION=="bind", SUBSYSTEM=="soundwire", KERNEL=="sdw:*:0217:010d:*", ATTR{power/control}="on"

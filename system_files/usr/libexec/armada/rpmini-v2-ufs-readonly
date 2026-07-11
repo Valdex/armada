@@ -1,0 +1,54 @@
+#!/usr/bin/bash
+# Called only by the dedicated RP Mini V2 UFS udev rule.
+set -euo pipefail
+
+if [[ -x /usr/sbin/blockdev ]]; then
+    blockdev=/usr/sbin/blockdev
+elif [[ -x /usr/bin/blockdev ]]; then
+    blockdev=/usr/bin/blockdev
+else
+    echo "rpmini-v2-ufs-readonly: blockdev is unavailable" >&2
+    exit 1
+fi
+
+protect_one() {
+    local name=$1 device sysfs
+    [[ ${name} =~ ^sd[a-z]$ ]] || {
+        echo "rpmini-v2-ufs-readonly: invalid block device name: ${name}" >&2
+        return 2
+    }
+    device="/dev/${name}"
+    sysfs=$(cd -P "/sys/class/block/${name}" 2>/dev/null && pwd || true)
+    [[ -b ${device} && ${sysfs} == */1d84000.ufshc/* ]] || {
+        echo "rpmini-v2-ufs-readonly: refusing non-UFS device: ${device}" >&2
+        return 1
+    }
+
+    "${blockdev}" --setro "${device}"
+    [[ $("${blockdev}" --getro "${device}") == 1 ]] || {
+        echo "rpmini-v2-ufs-readonly: failed to protect ${device}" >&2
+        return 1
+    }
+}
+
+case ${1:-} in
+    --assert-all)
+        shopt -s nullglob
+        protected=0
+        for sysfs_link in /sys/class/block/sd[a-z]; do
+            name=${sysfs_link##*/}
+            resolved=$(cd -P "${sysfs_link}" 2>/dev/null && pwd || true)
+            [[ ${resolved} == */1d84000.ufshc/* ]] || continue
+            protect_one "${name}"
+            protected=$((protected + 1))
+        done
+        (( protected > 0 )) || {
+            echo "rpmini-v2-ufs-readonly: no internal UFS LUN was found" >&2
+            exit 1
+        }
+        echo "rpmini-v2-ufs-readonly: protected ${protected} internal UFS LUN(s)"
+        ;;
+    *)
+        protect_one "${1:-}"
+        ;;
+esac

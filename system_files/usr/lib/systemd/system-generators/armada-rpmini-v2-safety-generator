@@ -1,0 +1,35 @@
+#!/bin/sh
+# Disable mutation paths that still assume Armada's Android boot.img layout.
+# This is inactive on every image without the dedicated V2 kernel marker.
+set -eu
+
+cmdline=" $(cat /proc/cmdline 2>/dev/null || true) "
+build_target=$(cat /usr/lib/armada/build-target 2>/dev/null || true)
+if [ "${build_target}" != retroid-pocket-mini-v2 ]; then
+    case "${cmdline}" in
+        *" armada.device-target=retroid-pocket-mini-v2 "*) ;;
+        *) exit 0 ;;
+    esac
+fi
+
+early_dir=${2:?missing early generator directory}
+mkdir -p "${early_dir}" /run/armada/features
+
+for unit in \
+    armada-bootimg-sync.service \
+    armada-installer-visibility.service \
+    bootc-fetch-apply-updates.service \
+    bootc-fetch-apply-updates.timer \
+    bootloader-update.service
+do
+    ln -sf /dev/null "${early_dir}/${unit}"
+done
+
+# TryExec on the installer desktop file points at this volatile path.  Keeping it
+# absent hides the destructive internal-storage path even if a stale preset tries
+# to start installer-visibility.
+rm -f /run/armada/installable
+printf '%s\n' retroid-pocket-mini-v2 > /run/armada/device-target
+printf '%s\n' disabled > /run/armada/features/ota
+printf '%s\n' disabled > /run/armada/features/internal-installer
+printf '%s\n' disabled > /run/armada/features/android-bootimg-sync

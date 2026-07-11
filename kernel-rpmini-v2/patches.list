@@ -1,0 +1,39 @@
+# ROCKNIX 20260701 patch order for Linux 7.0.11. This follows the project-local
+# kernel package (mainline, 7.0, SM8250). The generic async-suspend patch is not
+# part of the release kernel that booted on the physical RP Mini V2.
+projects/ROCKNIX/packages/linux/patches/mainline/0001-gpiolib-of-revert-api-changes-needed-for-joypad-driv.patch
+projects/ROCKNIX/packages/linux/patches/mainline/0002-input-add-input-polldev-driver.patch
+projects/ROCKNIX/packages/linux/patches/mainline/0003-pwm-add-pwm_set_period.patch
+projects/ROCKNIX/packages/linux/patches/mainline/0004-input-adc-keys-redirect-keycode-316-to-rocknix-joypa.patch
+projects/ROCKNIX/packages/linux/patches/mainline/0005-Bluetooth-btrtl-Add-the-support-for-RTL8733BU.patch
+projects/ROCKNIX/packages/linux/patches/7.0/0010-msm-resource-cleanup.patch
+projects/ROCKNIX/packages/linux/patches/7.0/9999-fix-rust-build-error.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0001-msm-dsi-restore-wide_bus-bpp-calculation.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0004-pm8150b.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0005-sm8250-uart.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0008-retroid-gamepad.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0009-qcom-spmi-haptics.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0010-leds-htr3212.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0011-qcom-pm8150b-charger.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0012-ASoC-qcom-q6asm-dai-Change-some-default-periods.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0013-add-force-feedback.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0014-fix-wifi-and-bt-mac.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0015-touchscreen-edt-ft5x06-allow-to-override-input-name.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0016-rp5-smooth-brightness-adjustment.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0047_ASoC--codecs--aw88166--AYN-Odin2-Specific-modifica.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0057_Chipone-ICNA35XX-panel.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0058_DDIC-CH13726A-panel.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0060_Mangmi-Pocket-Max-SPI-joypad.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0061_leds-aw200xx-vdd-supply.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0062_wsa881x-shared-powerdown-gpio.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0063_Mangmi-Pocket-Max-HL7139-charge-pump.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0100-revert-force-16bit-audio.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0102-arm64-dts-qcom-pm8150-Add-nvmem-support-for-PM8150-R.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0300-batocera-fix-headphone-jack-detection.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/0505-msm_gem-lock-before-put_iova_spaces.patch
+projects/ROCKNIX/devices/SM8250/patches/linux/9997-set-boot-fanspeed.patch
+
+# Deliberately omitted from the release device directory:
+# - 0504: replaced by patches/0002-input-compat-allow-64-bit-processes-to-opt-in.patch
+# - 9998: overclocks the Adreno A650 and is unsafe for first bring-up
+# - 9999: suppresses real errors needed during hardware validation

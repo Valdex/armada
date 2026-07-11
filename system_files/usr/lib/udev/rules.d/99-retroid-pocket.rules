@@ -1,0 +1,6 @@
+# Based on ROCKNIX 20260701 commit 3e4ee5852e6ca5ea73a38369d2639fad2262648b;
+# Armada also recognizes the haptics name observed on the physical V2 unit.
+# projects/ROCKNIX/devices/SM8250/filesystem/usr/lib/udev/rules.d/99-retroid-pocket.rules
+SUBSYSTEM=="input", ATTRS{name}=="Retroid Pocket Gamepad", MODE="0666", ENV{ID_INPUT_JOYSTICK}="1"
+SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT}=="1", ATTRS{name}=="pmi8998_haptics", TAG+="uaccess", ENV{FEEDBACKD_TYPE}="vibra"
+SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT}=="1", ATTRS{name}=="spmi_haptics", TAG+="uaccess", ENV{FEEDBACKD_TYPE}="vibra"

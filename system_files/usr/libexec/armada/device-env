@@ -22,6 +22,7 @@ case "$model" in
     "AYANEO Pocket S2") profile=ayaneo-pocket-s2 ;;
     "KONKR Pocket FIT") profile=konkr-pocket-fit ;;
     "AYN Odin 3") profile=ayn-odin-3 ;;
+    "Retroid Pocket Mini V2") profile=retroid-pocket-mini-v2 ;;
     "Retroid Pocket 6") profile=retroid-pocket-6 ;;
     "Retroid Pocket 6 TOP-DPAD") profile=retroid-pocket-6 ;;
     *) profile= ;;

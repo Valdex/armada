@@ -47,6 +47,19 @@ Includes:
 | AYANEO Pocket DMG | SM8550 | ⚪ Untested |
 | AYANEO Pocket S 2K | SM8550 | ⚪ Untested |
 
+### Experimental Retroid Pocket Mini V2 port
+
+This branch contains a source-only, not-yet-hardware-tested port for the
+original SM8250 Retroid Pocket Mini fitted with Retroid's replacement V2
+display. It uses a dedicated image and boot path; the generic flashing,
+updating, and internal-installation instructions below do **not** apply.
+
+Follow the [RP Mini V2 runbook](docs/retroid-pocket-mini-v2.md). The first
+milestone is microSD-only, reuses the already working SM8250 ROCKNIX ABL, and
+deliberately blocks OTA and internal installation until the GRUB update path
+has been validated on real hardware. The image intentionally carries no ABL
+payload or flashing script.
+
 ## Flash to SD card
 
 Armada boots from SD card. Once it is running, you can optionally install it to

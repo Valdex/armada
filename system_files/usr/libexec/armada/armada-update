@@ -3,6 +3,11 @@
 # (switch on change, else upgrade), reporting N% to Steam. Exit 0=ok, 7=none/fail.
 set -uo pipefail
 source /usr/lib/armada/update-lib
+source /usr/lib/armada/build-target-lib
+
+# Exit 7 means "no update" to Steam. Refuse before bootc can stage a
+# deployment whose kernel/DTB cannot yet be synchronized to the V2 GRUB path.
+armada_require_mutations_allowed "OTA update" || exit 7
 
 check=0
 for arg in "$@"; do

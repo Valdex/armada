@@ -120,9 +120,6 @@ resume_runtime_pm() {
     done < <(tac "$SAVE_DIR/power-controls")
 }
 
-# The power key is left ungrabbed by block_input; wait_for_wake grabs it instead.
-INPUT_WHITELIST='pmic_pwrkey'
-
 power_device() {
     local dev name
     for dev in /dev/input/event*; do
@@ -134,13 +131,16 @@ power_device() {
 }
 
 block_input() {
-    local dev name
+    local dev pdev
+    pdev="$(power_device || true)"
     for dev in /dev/input/event*; do
         [[ -e "$dev" ]] || continue
+        # Leave the exact node selected by wait_for_wake available regardless
+        # of whether the kernel names it pmic_pwrkey, pm8941_pwrkey, or another
+        # platform-specific variant.
+        [[ -n "$pdev" && "$dev" == "$pdev" ]] && continue
         # Never grab the lid switch — logind/resume need its events to flow.
         armada_dev_has_lid "$dev" && continue
-        name="$(cat "/sys/class/input/$(basename "$dev")/device/name" 2>/dev/null)" || continue
-        echo "$name" | grep -qE "^(${INPUT_WHITELIST})$" && continue
         evtest --grab "$dev" >/dev/null 2>&1 &
     done
 }

@@ -1,0 +1,33 @@
+#!/usr/bin/bash
+# Immutable build-target gate for operations that can change boot or storage.
+
+armada_build_target() {
+    local file=/usr/lib/armada/build-target
+    local target="" extra=""
+
+    [[ -r "${file}" ]] || { printf '%s\n' unknown; return; }
+    IFS= read -r target < "${file}" || true
+    extra=$(sed -n '2p' "${file}" 2>/dev/null || true)
+    [[ -z "${extra}" ]] || { printf '%s\n' unknown; return; }
+    case "${target}" in
+        universal|retroid-pocket-mini-v2) printf '%s\n' "${target}" ;;
+        *) printf '%s\n' unknown ;;
+    esac
+}
+
+armada_require_mutations_allowed() {
+    local operation=${1:-mutation}
+    local target cmdline
+    target=$(armada_build_target)
+    cmdline=" $(cat /proc/cmdline 2>/dev/null || true) "
+
+    # The immutable image marker is authoritative.  Also honor the kernel
+    # marker so a mismatched/universal root cannot mutate a dedicated V2 boot.
+    if [[ "${target}" != universal ]] \
+        || [[ "${cmdline}" == *" armada.device-target=retroid-pocket-mini-v2 "* ]]; then
+        echo "ERROR: ${operation} is disabled for build target ${target}." >&2
+        echo "       The experimental RP Mini V2 image has no safe GRUB/OTA or internal-install path yet." >&2
+        return 1
+    fi
+    return 0
+}

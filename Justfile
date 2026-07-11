@@ -73,6 +73,19 @@ build $target_image=image_name $tag=default_tag:
     ARMADA_VERSION="$(TZ=America/New_York date +%Y%m%d).$(git rev-parse --short HEAD)"
     BUILD_ARGS+=("--build-arg" "ARMADA_VERSION=${ARMADA_VERSION}")
 
+    # Dedicated device images opt in explicitly.  The empty/default path stays
+    # byte-for-byte compatible with the universal Armada container build.
+    if [[ -n "${ARMADA_DEVICE_TARGET:-}" ]]; then
+        case "${ARMADA_DEVICE_TARGET}" in
+            universal|retroid-pocket-mini-v2) ;;
+            *)
+                echo "unknown ARMADA_DEVICE_TARGET: ${ARMADA_DEVICE_TARGET}" >&2
+                exit 1
+                ;;
+        esac
+        BUILD_ARGS+=("--build-arg" "ARMADA_DEVICE_TARGET=${ARMADA_DEVICE_TARGET}")
+    fi
+
     # Allow local armada-packages images to override pinned package images.
     mapfile -t PKG_VARS < <(sed -n 's/^ARG \([A-Z0-9_]*_PKG\)=.*/\1/p' Containerfile)
     declare -A KNOWN_PKG_VARS=()
@@ -230,6 +243,29 @@ build-armada-image $target_image=("localhost/" + image_name) $tag=default_tag: (
         export OUT="output/armada-${version}.img.gz"
     fi
     ./post_process/finalize-armada-image.sh output/image/disk.raw
+
+[private]
+_build-rpmini-v2-container $target_image $tag:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ARMADA_DEVICE_TARGET=retroid-pocket-mini-v2 just build "{{ target_image }}" "{{ tag }}"
+
+# Dedicated SM8250/RP Mini V2 path.  It deliberately does not call
+# make-bootimg.sh: ROCKNIX ABL loads EFI/GRUB, which in turn loads the raw Image,
+# initramfs and the one exact V2 DTB selected from the BLS deployment.
+[group('Armada')]
+build-armada-rpmini-v2-image $target_image=("localhost/" + image_name + "-rpmini-v2") $tag=default_tag: (_build-rpmini-v2-container target_image tag) && (_build-bib target_image tag "raw" "disk_config/disk.toml")
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Finalizing the RP Mini V2 SM8250 image..."
+    version=$(podman inspect -t image "${target_image}:${tag}" \
+                | jq -r '.[0].Config.Labels["org.opencontainers.image.version"] // empty')
+    # First hardware bring-up excludes live Flathub content. Install optional
+    # Flatpaks only after the base image passes the RP Mini V2 hardware matrix.
+    if [[ -n "$version" && "$version" != unknown ]]; then
+        export OUT="output/armada-rpmini-v2-sm8250-${version}.img.gz"
+    fi
+    ./post_process/finalize-rpmini-v2-image.sh output/image/disk.raw
 
 [group('Build Virtual Machine Image')]
 rebuild-qcow2 $target_image=("localhost/" + image_name) $tag=default_tag: && (_rebuild-bib target_image tag "qcow2" "disk_config/disk.toml")

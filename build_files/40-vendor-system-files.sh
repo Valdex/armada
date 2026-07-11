@@ -2,6 +2,45 @@
 set -euxo pipefail
 
 cp -a /ctx/system_files/. /
+
+# This SoundWire runtime-PM workaround is required by the SM8250 Retroid jack
+# path, but the same codec IDs exist on supported universal-image devices. Do
+# not silently change their power behaviour.
+if [[ "$(</usr/lib/armada/build-target)" != retroid-pocket-mini-v2 ]]; then
+    rm -f /usr/lib/udev/rules.d/99-wcd938x-nosleep.rules
+    rm -f /usr/lib/udev/rules.d/99-armada-rpmini-v2-ufs-readonly.rules
+    rm -f /usr/libexec/armada/rpmini-v2-ufs-readonly
+    rm -f /usr/lib/dracut/dracut.conf.d/11-armada-rpmini-v2.conf
+    rm -f /usr/lib/systemd/system/armada-rpmini-v2-ufs-guard.service
+    rm -f /usr/lib/systemd/system/initrd-root-fs.target.requires/armada-rpmini-v2-ufs-guard.service
+fi
+
+if [[ "$(</usr/lib/armada/build-target)" == retroid-pocket-mini-v2 ]]; then
+    grep -Fq 'KERNELS=="1d84000.ufshc"' \
+        /usr/lib/udev/rules.d/99-armada-rpmini-v2-ufs-readonly.rules
+    grep -Fq -- '--setro "${device}"' \
+        /usr/libexec/armada/rpmini-v2-ufs-readonly
+    grep -Fq -- '--assert-all' \
+        /usr/lib/systemd/system/armada-rpmini-v2-ufs-guard.service
+
+    ucm_root=/usr/share/alsa/ucm2
+    canonical=${ucm_root}/Qualcomm/sm8250/RetroidPocket.conf
+    for profile in \
+        ${ucm_root}/conf.d/sm8250/RetroidPocket.conf \
+        ${ucm_root}/conf.d/sm8250/retroidpocket-RetroidPocketMini.conf \
+        ${ucm_root}/conf.d/sm8250/retroidpocket-RetroidPocketMiniV2.conf; do
+        cmp --silent "${canonical}" "${profile}" || {
+            echo "ERROR: RP Mini V2 UCM profile diverges from release HiFi profile: ${profile}" >&2
+            exit 1
+        }
+    done
+    ! grep -R -E 'HDMI-RP|hw:\$\{CardId\},3|MultiMedia4' \
+        "${ucm_root}/Qualcomm/sm8250" "${ucm_root}/conf.d/sm8250" || {
+        echo "ERROR: unvalidated HDMI PCM is present in RP Mini V2 UCM" >&2
+        exit 1
+    }
+fi
+
 install -Dpm 0755 /packages/extest/libextest.so /usr/lib/extest/libextest.so
 
 # mkbootimg must be present for on-device /KERNEL rebuilds after OTA.

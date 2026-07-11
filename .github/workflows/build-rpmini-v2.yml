@@ -1,0 +1,106 @@
+---
+name: Build Retroid Pocket Mini V2 image
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: rpmini-v2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Experimental SM8250 SD image
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Maximize build space
+        uses: ublue-os/remove-unwanted-software@cc0becac701cf642c8f0a6613bbdaf5dc36b259e # v9
+        with:
+          remove-codeql: true
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Install build tools
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            buildah \
+            containernetworking-plugins \
+            curl \
+            dosfstools \
+            dracut-core \
+            git \
+            grub-efi-arm64-bin \
+            jq \
+            pigz \
+            podman \
+            python3 \
+            util-linux \
+            xz-utils \
+            zstd
+
+      - name: Check recipes and diagnostics
+        uses: ublue-os/just-action@30ab4659369934b65b655bf8d2fa4ddd6547d384 # v3
+
+      - name: Verify RP Mini V2 support bundle
+        run: ./tools/test-rpmini-v2-support-bundle.sh
+
+      - name: Build pinned SM8250 kernel carrier
+        run: |
+          set -euxo pipefail
+          ./kernel-rpmini-v2/build.sh
+          buildah build \
+            -f kernel-rpmini-v2/Carrierfile \
+            -t localhost/armada-packages/kernel:latest \
+            kernel-rpmini-v2
+
+      - name: Build dedicated SD image
+        env:
+          ARMADA_DEVICE_TARGET: retroid-pocket-mini-v2
+          ARMADA_LOCAL_PKGS: kernel
+        run: |
+          set -euxo pipefail
+          sudo git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+          # Run the recipe rootless so it can consume the local kernel carrier;
+          # the BIB helper elevates only the loop/container operations it needs.
+          just build-armada-rpmini-v2-image localhost/armada-rpmini-v2 latest
+          mapfile -t IMAGES < <(find output -maxdepth 1 -name 'armada-rpmini-v2-sm8250-*.img.gz' -type f -print | sort)
+          test "${#IMAGES[@]}" -eq 1
+          IMG=${IMAGES[0]}
+          (
+            cd "$(dirname "${IMG}")"
+            sha256sum "$(basename "${IMG}")" > "$(basename "${IMG}").sha256"
+            sha256sum --check "$(basename "${IMG}").sha256"
+          )
+          {
+            echo "git_commit=$(git rev-parse HEAD)"
+            echo "git_tree=$(git rev-parse 'HEAD^{tree}')"
+            echo "runner=$(uname -srvmo)"
+            echo "flatpak_preseed=disabled-for-first-hardware-bringup"
+            sed 's/^/kernel_/' kernel-rpmini-v2/BASE.env
+            echo "armada_container_id=$(podman image inspect localhost/armada-rpmini-v2:latest --format '{{.Id}}')"
+            echo "bib_image=quay.io/centos-bootc/bootc-image-builder:latest"
+            echo "bib_resolved=$(sudo podman image inspect quay.io/centos-bootc/bootc-image-builder:latest --format '{{join .RepoDigests ","}}')"
+            dpkg-query -W -f='package_${binary:Package}=${Version}\n' \
+              buildah dracut-core grub-efi-arm64-bin pigz podman python3 util-linux
+          } > "${IMG}.build.txt"
+          ls -lh "${IMG}" "${IMG}.sha256" "${IMG}.build.txt"
+
+      - name: Upload experimental image
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: armada-rpmini-v2-sm8250
+          path: |
+            output/armada-rpmini-v2-sm8250-*.img.gz
+            output/armada-rpmini-v2-sm8250-*.img.gz.sha256
+            output/armada-rpmini-v2-sm8250-*.img.gz.build.txt
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+          overwrite: true

@@ -3,6 +3,11 @@
 # bootc upgrade/rollback takes effect — ostree is bootloader=none and won't.
 set -euo pipefail
 
+source /usr/lib/armada/build-target-lib
+
+# Never replace the dedicated EFI/GRUB layout with an Android boot.img.
+armada_require_mutations_allowed "Android boot.img synchronization" || exit 1
+
 ESP="${ESP:-/boot/efi}"
 BOOTROOT="${BOOTROOT:-/boot}"
 MKBOOTIMG="${MKBOOTIMG:-/usr/libexec/armada/mkbootimg.py}"

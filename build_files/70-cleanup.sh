@@ -1,8 +1,10 @@
 #!/bin/bash
 set -euxo pipefail
 
-# Firmware for unrelated hardware.
-dnf5 -y remove --no-autoremove \
+# Firmware for unrelated hardware. The RP Mini V2 baseline uses the user's
+# RTL8153 USB Ethernet adapter as its wired rescue path, so keep that target's
+# Realtek NIC firmware.
+firmware_packages=(
     amd-gpu-firmware \
     amd-ucode-firmware \
     brcmfmac-firmware \
@@ -13,8 +15,12 @@ dnf5 -y remove --no-autoremove \
     nvidia-gpu-firmware \
     nxpwireless-firmware \
     qcom-wwan-firmware \
-    realtek-firmware \
     tiwilink-firmware
+)
+if [[ "$(</usr/lib/armada/build-target)" != retroid-pocket-mini-v2 ]]; then
+    firmware_packages+=(realtek-firmware)
+fi
+dnf5 -y remove --no-autoremove "${firmware_packages[@]}"
 
 rm -f /usr/lib/binfmt.d/qemu-*.conf
 
@@ -42,7 +48,7 @@ case "$(rpm -q --qf '%{release}' mangohud)" in
     *) echo "ERROR: stock mangohud installed; patched .armada mangohud lost"; exit 1 ;;
 esac
 
-rm -rf \
+firmware_paths=(
     /usr/lib/firmware/amdgpu \
     /usr/lib/firmware/amd-ucode \
     /usr/lib/firmware/brcm \
@@ -56,6 +62,23 @@ rm -rf \
     /usr/lib/firmware/nvidia \
     /usr/lib/firmware/nxp \
     /usr/lib/firmware/rtw89 \
-    /usr/lib/firmware/rtl_nic \
     /usr/lib/firmware/ti-connectivity \
     /usr/lib/firmware/xe
+)
+if [[ "$(</usr/lib/armada/build-target)" != retroid-pocket-mini-v2 ]]; then
+    firmware_paths+=(/usr/lib/firmware/rtl_nic)
+fi
+rm -rf "${firmware_paths[@]}"
+
+if [[ "$(</usr/lib/armada/build-target)" == retroid-pocket-mini-v2 ]]; then
+    rpm -q realtek-firmware >/dev/null || {
+        echo "ERROR: RP Mini V2 wired-rescue firmware package is missing" >&2
+        exit 1
+    }
+    [[ -e /usr/lib/firmware/rtl_nic/rtl8153a-4.fw \
+        || -e /usr/lib/firmware/rtl_nic/rtl8153a-4.fw.xz \
+        || -e /usr/lib/firmware/rtl_nic/rtl8153a-4.fw.zst ]] || {
+        echo "ERROR: RP Mini V2 wired-rescue firmware rtl8153a-4 is missing" >&2
+        exit 1
+    }
+fi

@@ -1,0 +1,5 @@
+# The experimental RP Mini V2 image is SD-only. Keep every LUN exposed by the
+# SM8250 UFS host read-only and invisible to desktop automounters. This file is
+# removed from universal builds by 40-vendor-system-files.sh.
+ACTION=="add", SUBSYSTEM=="block", KERNEL=="sd[a-z]", KERNELS=="1d84000.ufshc", ENV{UDISKS_IGNORE}="1", ENV{UDISKS_SYSTEM}="1", RUN+="/usr/libexec/armada/rpmini-v2-ufs-readonly %k"
+ACTION=="add", SUBSYSTEM=="block", KERNEL=="sd[a-z][0-9]*", KERNELS=="1d84000.ufshc", ENV{UDISKS_IGNORE}="1", ENV{UDISKS_SYSTEM}="1"
