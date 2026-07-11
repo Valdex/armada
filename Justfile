@@ -254,7 +254,7 @@ _build-rpmini-v2-container $target_image $tag:
 # make-bootimg.sh: ROCKNIX ABL loads EFI/GRUB, which in turn loads the raw Image,
 # initramfs and the one exact V2 DTB selected from the BLS deployment.
 [group('Armada')]
-build-armada-rpmini-v2-image $target_image=("localhost/" + image_name + "-rpmini-v2") $tag=default_tag: (_build-rpmini-v2-container target_image tag) && (_build-bib target_image tag "raw" "disk_config/disk.toml")
+build-armada-rpmini-v2-image $target_image=("localhost/" + image_name + "-rpmini-v2") $tag=default_tag: (_build-rpmini-v2-container target_image tag) (_build-bib target_image tag "raw" "disk_config/disk.toml")
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Finalizing the RP Mini V2 SM8250 image..."
