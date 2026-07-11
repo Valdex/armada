@@ -149,8 +149,11 @@ _rootful_load_image $target_image=image_name $tag=default_tag:
     if [[ $return_code -eq 0 ]]; then
         ID=$(just sudoif podman images --filter reference="${target_image}:${tag}" --format "'{{ '{{.ID}}' }}'")
         if [[ "$ID" != "$USER_IMG_ID" ]]; then
-            # BIB runs as root, so rootful podman needs the image.
-            just sudoif podman image scp ${UID}@localhost::"${target_image}:${tag}" root@localhost::"${target_image}:${tag}"
+            # BIB runs as root, so rootful podman needs the image. Stream an
+            # archive between the stores: cross-user `podman image scp` needs
+            # machinectl/systemd-machined, which minimal CI hosts omit.
+            podman save "${target_image}:${tag}" | just sudoif podman load
+            just sudoif podman image exists "${target_image}:${tag}"
         fi
     else
         just sudoif podman pull "${target_image}:${tag}"
