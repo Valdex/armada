@@ -27,6 +27,24 @@ mapfile -t KERNEL_MODULE_DIRS < <(find /usr/lib/modules -mindepth 1 -maxdepth 1 
     exit 1
 }
 KVER=$(basename "${KERNEL_MODULE_DIRS[0]}")
+KERNEL_CONFIG="/usr/lib/modules/${KVER}/config"
+[ -f "${KERNEL_CONFIG}" ] || {
+    echo "ERROR: packaged kernel config is missing: ${KERNEL_CONFIG}" >&2
+    exit 1
+}
+for required in \
+    CONFIG_OVERLAY_FS \
+    CONFIG_EROFS_FS \
+    CONFIG_EROFS_FS_XATTR \
+    CONFIG_EROFS_FS_POSIX_ACL \
+    CONFIG_EROFS_FS_SECURITY \
+    CONFIG_EROFS_FS_BACKED_BY_FILE \
+    CONFIG_FS_VERITY; do
+    grep -q "^${required}=y$" "${KERNEL_CONFIG}" || {
+        echo "ERROR: packaged kernel cannot boot OSTree ComposeFS: ${required} != y" >&2
+        exit 1
+    }
+done
 depmod -a "${KVER}" -b /
 
 # Dracut config must exist before initramfs generation.

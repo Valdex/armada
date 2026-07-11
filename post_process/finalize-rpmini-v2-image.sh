@@ -302,7 +302,7 @@ menuentry 'Armada - Retroid Pocket Mini V2 (experimental)' {
 }
 
 menuentry 'Armada - Retroid Pocket Mini V2 (diagnostic console)' {
-    linux (\$armada_boot)/${STAGE_REL}/Image ${KARGS} systemd.unit=multi-user.target systemd.wants=sshd.service systemd.wants=getty@tty1.service plymouth.enable=0 loglevel=7
+    linux (\$armada_boot)/${STAGE_REL}/Image ${KARGS} ostree.prepare-root.composefs=0 systemd.unit=multi-user.target systemd.wants=sshd.service systemd.wants=getty@tty1.service plymouth.enable=0 loglevel=7
     initrd (\$armada_boot)/${STAGE_REL}/initramfs.img
     devicetree (\$armada_boot)/${STAGE_REL}/${EXPECTED_DTB}
 }

@@ -117,6 +117,15 @@ scripts/config --set-str CONFIG_INITRAMFS_SOURCE ''
 scripts/config --set-str CONFIG_LOCALVERSION -armada-rpmini-v2
 scripts/config --disable CONFIG_LOCALVERSION_AUTO
 scripts/config --enable CONFIG_OVERLAY_FS
+# bootc/OSTree mounts a file-backed EROFS metadata image and layers it with
+# overlayfs during ostree-prepare-root.  These must be built in because that
+# happens before switch_root; relying on a module in the real root is too late.
+scripts/config --enable CONFIG_EROFS_FS
+scripts/config --enable CONFIG_EROFS_FS_XATTR
+scripts/config --enable CONFIG_EROFS_FS_POSIX_ACL
+scripts/config --enable CONFIG_EROFS_FS_SECURITY
+scripts/config --enable CONFIG_EROFS_FS_BACKED_BY_FILE
+scripts/config --enable CONFIG_FS_VERITY
 scripts/config --enable CONFIG_FW_LOADER_COMPRESS
 scripts/config --enable CONFIG_FW_LOADER_COMPRESS_XZ
 scripts/config --enable CONFIG_FW_LOADER_COMPRESS_ZSTD
@@ -132,6 +141,12 @@ for required in \
     CONFIG_EFI_STUB \
     CONFIG_BTRFS_FS \
     CONFIG_OVERLAY_FS \
+    CONFIG_EROFS_FS \
+    CONFIG_EROFS_FS_XATTR \
+    CONFIG_EROFS_FS_POSIX_ACL \
+    CONFIG_EROFS_FS_SECURITY \
+    CONFIG_EROFS_FS_BACKED_BY_FILE \
+    CONFIG_FS_VERITY \
     CONFIG_FW_LOADER_COMPRESS \
     CONFIG_FW_LOADER_COMPRESS_XZ \
     CONFIG_FW_LOADER_COMPRESS_ZSTD \
@@ -178,6 +193,7 @@ STAGE=${WORK_DIR}/stage-${KVER}
 rm -rf "${STAGE}"
 mkdir -p "${STAGE}/lib/modules/${KVER}/dtb/qcom"
 install -m 0644 arch/arm64/boot/Image "${STAGE}/lib/modules/${KVER}/vmlinuz"
+install -m 0644 .config "${STAGE}/lib/modules/${KVER}/config"
 make -j"${JOBS}" ARCH=arm64 INSTALL_MOD_PATH="${STAGE}" INSTALL_MOD_STRIP=1 modules_install
 rm -f "${STAGE}/lib/modules/${KVER}/build" "${STAGE}/lib/modules/${KVER}/source"
 
