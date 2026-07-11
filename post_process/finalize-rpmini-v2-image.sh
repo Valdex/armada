@@ -242,6 +242,9 @@ for token in ${OPTIONS_LINE}; do
         || die "unsafe or unsupported character in BLS option: ${token}"
     case "${token}" in
         ostree=*) OSTREE_ARGS=$((OSTREE_ARGS + 1)) ;;
+        ostree.prepare-root.composefs=*)
+            die "BLS already contains a ComposeFS override"
+            ;;
         armada.device-target=*) die "BLS already contains a device target marker" ;;
     esac
 done

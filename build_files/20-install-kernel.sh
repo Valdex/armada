@@ -34,6 +34,7 @@ KERNEL_CONFIG="/usr/lib/modules/${KVER}/config"
 }
 for required in \
     CONFIG_OVERLAY_FS \
+    CONFIG_BLK_DEV_LOOP \
     CONFIG_EROFS_FS \
     CONFIG_EROFS_FS_XATTR \
     CONFIG_EROFS_FS_POSIX_ACL \

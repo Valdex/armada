@@ -15,7 +15,7 @@ the pinned ROCKNIX list. The initial follow-up normalizes the charger's
 flooding the kernel error log; it does not alter charger detection or limits.
 
 The carrier also enables EROFS (including file-backed images and extended
-attributes), OverlayFS and fs-verity as built-ins. Fedora bootc's
+attributes), OverlayFS, loop devices and fs-verity as built-ins. Fedora bootc's
 `ostree-prepare-root` needs those before `switch_root` to mount ComposeFS. The
 generated diagnostic GRUB entry disables ComposeFS explicitly so it remains a
 usable recovery path if that early mount ever regresses.

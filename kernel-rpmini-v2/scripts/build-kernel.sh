@@ -120,6 +120,7 @@ scripts/config --enable CONFIG_OVERLAY_FS
 # bootc/OSTree mounts a file-backed EROFS metadata image and layers it with
 # overlayfs during ostree-prepare-root.  These must be built in because that
 # happens before switch_root; relying on a module in the real root is too late.
+scripts/config --enable CONFIG_BLK_DEV_LOOP
 scripts/config --enable CONFIG_EROFS_FS
 scripts/config --enable CONFIG_EROFS_FS_XATTR
 scripts/config --enable CONFIG_EROFS_FS_POSIX_ACL
@@ -141,6 +142,7 @@ for required in \
     CONFIG_EFI_STUB \
     CONFIG_BTRFS_FS \
     CONFIG_OVERLAY_FS \
+    CONFIG_BLK_DEV_LOOP \
     CONFIG_EROFS_FS \
     CONFIG_EROFS_FS_XATTR \
     CONFIG_EROFS_FS_POSIX_ACL \
