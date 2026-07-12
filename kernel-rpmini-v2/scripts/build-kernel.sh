@@ -135,6 +135,8 @@ scripts/config --enable CONFIG_SYSFB_SIMPLEFB
 scripts/config --enable CONFIG_UCLAMP_TASK
 scripts/config --enable CONFIG_UCLAMP_TASK_GROUP
 scripts/config --module CONFIG_SND_SEQUENCER
+# SSC gyro bridge (local patch 0003): userspace-fed IIO device for snsfeed.
+scripts/config --module CONFIG_SNS_IIO
 scripts/config --disable CONFIG_WERROR
 make -j"${JOBS}" ARCH=arm64 olddefconfig
 
@@ -179,7 +181,10 @@ for required in \
     CONFIG_SND_SOC_SM8250 \
     CONFIG_SND_SEQUENCER \
     CONFIG_USB_RTL8152 \
-    CONFIG_LEDS_HTR3212; do
+    CONFIG_LEDS_HTR3212 \
+    CONFIG_SNS_IIO \
+    CONFIG_QCOM_FASTRPC \
+    CONFIG_QRTR; do
     grep -Eq "^${required}=(y|m)$" .config || {
         echo "ERROR: required RP Mini V2 kernel option did not survive: ${required}" >&2
         exit 1

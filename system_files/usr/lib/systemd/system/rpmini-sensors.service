@@ -1,0 +1,15 @@
+[Unit]
+Description=RP Mini V2 Snapdragon Sensor Core accel+gyro bring-up
+ConditionKernelCommandLine=|!nogyro
+# Inert unless the Android sensor registry is shipped in the image (the
+# Android 10 kona layout has no json.lst; sns_reg_config is the anchor).
+ConditionPathExists=/usr/share/qcom-hexagon-fs/vendor/etc/sensors/sns_reg_config
+
+[Service]
+Type=simple
+ExecStart=/usr/libexec/armada/rpmini-sensors-start
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,15 @@
+pedometer
+rotv
+tilt
+gravity
+mag
+sig_motion
+psmd
+mag_cal
+device_orient
+geomag_rv
+gyro
+gyro_cal
+game_rv
+accel
+resampler

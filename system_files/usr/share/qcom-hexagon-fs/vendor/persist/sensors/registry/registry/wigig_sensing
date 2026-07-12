@@ -1,0 +1,1 @@
+{"wigig_sensing":{"owner":"wigig_sensing","dri_gpio_num":{"type":"int","ver":"0","data":"15"},"spi_instance":{"type":"int","ver":"0","data":"6"},"spi_freq_khz":{"type":"int","ver":"0","data":"20000"},"enable":{"type":"int","ver":"0","data":"0"}}}

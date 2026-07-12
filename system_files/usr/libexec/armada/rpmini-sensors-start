@@ -1,0 +1,39 @@
+#!/bin/sh
+# RP Mini V2 SSC accel+gyro bring-up (ROCKNIX PR #3005 ported to SM8250).
+#  1. stage the Hexagon sensor registry to a writable tmpfs path
+#  2. load the sns_iio IIO bridge module
+#  3. spawn the SLPI "sensorspd" static PD + reverse-RPC listener (adsprpcd)
+#  4. stream accel+gyro from QRTR into the bridge (snsfeed, foreground)
+HEXFS=/tmp/qcom-hexagon-fs
+
+# SM8250: sensors live on the SLPI; fastrpc domain is "sdsp". The node appears
+# only after remoteproc boots slpi.mbn, so wait rather than race it.
+for _ in $(seq 1 30); do
+    [ -e /dev/fastrpc-sdsp ] && break
+    sleep 1
+done
+[ -e /dev/fastrpc-sdsp ] || { echo "no /dev/fastrpc-sdsp; SLPI not up" >&2; exit 1; }
+
+# (1) stage registry
+rm -rf "${HEXFS}"
+mkdir -p "${HEXFS}"
+cp -a /usr/share/qcom-hexagon-fs/. "${HEXFS}/"
+# The DSP prefixes file requests with its domain name; cover the variants seen
+# across SoCs (adsp on SM8750; sdsp/slpi expected here) with self-symlinks.
+for d in adsp sdsp slpi dsp; do ln -sf . "${HEXFS}/${d}"; done
+# and requests both /vendor/... and /mnt/vendor/... paths
+mkdir -p "${HEXFS}/mnt/vendor"
+mountpoint -q "${HEXFS}/mnt/vendor" || mount --bind "${HEXFS}/vendor" "${HEXFS}/mnt/vendor"
+
+# (2) IIO bridge (creates /dev/iio:deviceN + /dev/sns_iio_feed)
+modprobe sns_iio 2>/dev/null
+
+# (3) spawn the sensor PD + listener (serves the DSP's file reads of the
+#     staged registry via apps_std over ADSP_LIBRARY_PATH)
+ADSP_LIBRARY_PATH="${HEXFS}" /usr/bin/adsprpcd sensorspd sdsp &
+ADSPRPCD_PID=$!
+trap "kill ${ADSPRPCD_PID} 2>/dev/null" EXIT
+
+# (4) give the sensor drivers time to register on the SSC, then stream
+sleep 10
+exec /usr/bin/snsfeed 100

@@ -18,6 +18,42 @@ FROM ${NETWORKMANAGER_PKG} AS networkmanager
 FROM ${JUPITER_HW_SUPPORT_PKG} AS jupiter-hw-support
 FROM ${EXTEST_PKG} AS extest
 
+# SSC gyro daemons (see sensors-ssc/README.md): adsprpcd from pinned
+# qualcomm/fastrpc + the single-file snsfeed QRTR client.
+FROM registry.fedoraproject.org/fedora:44 AS sensors-build
+ARG FASTRPC_COMMIT=706071caca54b9a56d78793c30d04351de5fbd96
+ARG FASTRPC_SHA256=14aa4dbd0a69af319d7cca091a72316d68ecc36d4ff2906b75701ddcfd94b6b9
+RUN dnf -y install --setopt=install_weak_deps=False gcc make tar gzip && dnf clean all
+WORKDIR /build
+COPY sensors-ssc/ /build/sensors-ssc/
+RUN curl -fL -o fastrpc.tar.gz "https://github.com/qualcomm/fastrpc/archive/${FASTRPC_COMMIT}.tar.gz" && \
+    echo "${FASTRPC_SHA256}  fastrpc.tar.gz" | sha256sum -c && \
+    tar xzf fastrpc.tar.gz && \
+    cd "fastrpc-${FASTRPC_COMMIT}" && \
+    cp /build/sensors-ssc/bsd_shim.c /build/sensors-ssc/daemon_main.c /build/sensors-ssc/snsfeed.c src/ && \
+    FASTRPC_CFLAGS="-O2 -Iinc -Isrc -Isrc/dspqueue -DLE_ENABLE -DUSE_SYSLOG -fPIC -w" && \
+    FASTRPC_SRC="fastrpc_apps_user.c fastrpc_perf.c fastrpc_pm.c fastrpc_config.c \
+      fastrpc_mem.c fastrpc_notif.c fastrpc_ioctl.c fastrpc_log.c fastrpc_procbuf.c \
+      fastrpc_cap.c log_config.c dspsignal.c dspqueue/dspqueue_cpu.c \
+      dspqueue/dspqueue_rpc_stub.c listener_android.c apps_std_imp.c apps_mem_imp.c \
+      apps_mem_skel.c rpcmem_linux.c adspmsgd.c adspmsgd_printf.c std_path.c \
+      std_dtoa.c BufBound.c platform_libs.c pl_list.c gpls.c remotectl_stub.c \
+      remotectl1_stub.c adspmsgd_apps_skel.c adspmsgd_adsp_stub.c \
+      adspmsgd_adsp1_stub.c apps_remotectl_skel.c adsp_current_process_stub.c \
+      adsp_current_process1_stub.c adsp_listener_stub.c adsp_listener1_stub.c \
+      apps_std_skel.c adsp_perf_stub.c adsp_perf1_stub.c mod_table.c \
+      fastrpc_context.c adsp_default_listener.c adsp_default_listener_stub.c \
+      adsp_default_listener1_stub.c" && \
+    objs="" && \
+    for s in ${FASTRPC_SRC} bsd_shim.c daemon_main.c; do \
+      o="src/$(echo ${s} | tr '/' '_').o"; \
+      gcc ${FASTRPC_CFLAGS} -c "src/${s}" -o "${o}"; \
+      objs="${objs} ${o}"; \
+    done && \
+    gcc -O2 -o adsprpcd ${objs} -ldl -lm -lpthread && \
+    gcc -O2 -o snsfeed src/snsfeed.c -lm && \
+    mkdir -p /out && cp adsprpcd snsfeed /out/
+
 FROM docker.io/library/node:22-slim AS decky-build
 WORKDIR /build
 COPY decky/armada-control/package.json decky/armada-control/package-lock.json ./
@@ -46,6 +82,7 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=bind,from=networkmanager,source=/rpms,target=/packages/networkmanager \
     --mount=type=bind,from=jupiter-hw-support,source=/rpms,target=/packages/jupiter-hw-support \
     --mount=type=bind,from=extest,source=/,target=/packages/extest \
+    --mount=type=bind,from=sensors-build,source=/out,target=/packages/rpmini-sensors \
     --mount=type=bind,from=decky-build,source=/build/dist,target=/packages/decky-dist \
     --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
