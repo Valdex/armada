@@ -32,6 +32,11 @@ source_devices:
       phys_path: retroid-pocket-gamepad/input0
       handler: event*
     capability_map_id: retroid_mcu
+  # SSC gyro bridge (rpmini-sensors.service feeds this IIO device; the name is
+  # chosen so InputPlumber's iio_imu driver binds via its bmi* glob).
+  - group: imu
+    iio:
+      name: bmi323-imu
 
 # Optional configuration for the composite device
 options:
@@ -42,5 +47,5 @@ options:
 
 # The target input device(s) to emulate by default
 target_devices:
-  - ds5
+  - deck-uhid
   - keyboard

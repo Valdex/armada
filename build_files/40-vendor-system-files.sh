@@ -60,7 +60,9 @@ sed -i '$r /usr/share/plasma/shells/org.kde.plasma.desktop/contents/updates/arma
 find /etc/NetworkManager/system-connections -name '*.nmconnection' -exec chmod 0600 {} + -exec chown root:root {} + 2>/dev/null || true
 
 systemctl disable getty@tty1.service || true
-systemctl disable sshd.service || true
+# RP Mini port: keep SSH on for remote debugging (vendor default is disabled;
+# the diagnostic GRUB entry was the only way in otherwise).
+systemctl enable sshd.service
 systemctl enable sddm.service
 systemctl enable armada-session-default.service
 systemctl enable seatd.service
